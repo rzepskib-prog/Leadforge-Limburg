@@ -45,20 +45,12 @@ const STATUSES = [
 const save = (d) => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch(_){} };
 const load = ()  => { try { const v=localStorage.getItem(STORAGE_KEY); return v?JSON.parse(v):null; } catch(_){ return null; } };
 
-// Load Google Maps JS API once
-let mapsReady = false;
-let mapsCallbacks = [];
-function loadMapsSDK() {
-  return new Promise((resolve) => {
-    if (mapsReady) { resolve(); return; }
-    mapsCallbacks.push(resolve);
-    if (mapsCallbacks.length > 1) return; // already loading
-    const s = document.createElement("script");
-    s.src = "https://maps.googleapis.com/maps/api/js?key=" + GOOGLE_KEY + "&libraries=places";
-    s.async = true;
-    s.onload = () => { mapsReady = true; mapsCallbacks.forEach(cb => cb()); mapsCallbacks = []; };
-    document.head.appendChild(s);
-  });
+// Google Places via Vercel serverless proxy (no CORS issues)
+async function placesSearch(query, lat, lng) {
+  const params = new URLSearchParams({ query, lat, lng, radius: 15000 });
+  const r = await fetch("/api/places?" + params.toString());
+  if (!r.ok) throw new Error("Places API error: " + r.status);
+  return r.json();
 }
 
 // Load EmailJS SDK once
@@ -95,9 +87,8 @@ async function callClaude(prompt) {
   return d.content.map(c=>c.text||"").join("");
 }
 
-// Search real businesses via Google Places JS API
+// Search real businesses via Vercel proxy → Google Places
 async function searchRealBusinesses(typeIds, count=8) {
-  await loadMapsSDK();
   const selected = BIZ_TYPES.filter(t => typeIds.includes(t.id));
   const results = [];
   const seen = new Set();
@@ -106,17 +97,9 @@ async function searchRealBusinesses(typeIds, count=8) {
     const btype = selected[i % selected.length];
     const loc   = LIMBURG_LOCS[i % LIMBURG_LOCS.length];
     try {
-      const center = new window.google.maps.LatLng(loc.lat, loc.lng);
-      const service = new window.google.maps.places.PlacesService(document.createElement("div"));
-      const places = await new Promise((resolve, reject) => {
-        service.nearbySearch(
-          { location: center, radius: 15000, keyword: btype.query, type: "establishment" },
-          (res, status) => {
-            if (status === window.google.maps.places.PlacesServiceStatus.OK) resolve(res);
-            else resolve([]);
-          }
-        );
-      });
+      const query = btype.query + " " + loc.name + " Limburg Nederland";
+      const data  = await placesSearch(query, loc.lat, loc.lng);
+      const places = data.results || [];
       if (places.length > 0) {
         const pick = places[Math.floor(Math.random() * Math.min(5, places.length))];
         if (seen.has(pick.place_id)) continue;
@@ -124,14 +107,14 @@ async function searchRealBusinesses(typeIds, count=8) {
         results.push({
           id:        crypto.randomUUID(),
           name:      pick.name,
-          address:   pick.vicinity || loc.name,
+          address:   pick.formatted_address || pick.vicinity || loc.name,
           city:      loc.name,
           type:      btype.label,
           icon:      btype.icon,
           pain:      btype.pain,
           score:     pick.rating ? Math.min(10, Math.round(pick.rating*2)) : Math.floor(Math.random()*3)+7,
           rating:    pick.rating || null,
-          phone:     null, // requires Place Details call — added separately
+          phone:     null,
           hasWebsite:Math.random() > 0.4,
           placeId:   pick.place_id,
           real:      true,
