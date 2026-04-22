@@ -46,7 +46,7 @@ async function callClaude(prompt) {
   const r = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ messages: [{ role: "user", content: prompt }] }),
   });
   const d = await r.json();
   if (d.error) throw new Error(d.error.message || d.error);
