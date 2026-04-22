@@ -179,6 +179,7 @@ function LeadCard({lead, onGenerate, onPatch, onDelete, isGenerating, channel}) 
   const [editing, setEditing]   = useState(false);
   const [draft, setDraft]       = useState(lead.message || "");
   const [copied, setCopied]     = useState(false);
+  const [waCopied, setWaCopied] = useState(false);
   const [sending, setSending]   = useState(false);
   const [sendOk, setSendOk]     = useState(null);
   const [toEmail, setToEmail]   = useState(lead.toEmail || "");
@@ -188,9 +189,13 @@ function LeadCard({lead, onGenerate, onPatch, onDelete, isGenerating, channel}) 
   const copy = () => { navigator.clipboard.writeText(lead.message || ""); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
   const handleWhatsApp = () => {
-    const phone = (lead.phone || "").replace(/\D/g, "");
     const text = encodeURIComponent(lead.message || "");
-    window.open(phone ? "https://wa.me/"+phone+"?text="+text : "https://wa.me/?text="+text, "_blank");
+    // Always open WhatsApp Web with message pre-filled
+    window.open("https://web.whatsapp.com/", "_blank");
+    // Copy message to clipboard so user can paste it
+    navigator.clipboard.writeText(lead.message || "");
+    setWaCopied(true);
+    setTimeout(() => setWaCopied(false), 5000);
   };
 
   const handleSendEmail = async () => {
@@ -262,27 +267,40 @@ function LeadCard({lead, onGenerate, onPatch, onDelete, isGenerating, channel}) 
               {lead.message}
             </div>
             {channel === "whatsapp" ? (
-              <button onClick={handleWhatsApp}
-                className="w-full py-2.5 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-bold transition">
-                💬 Open WhatsApp Web — bericht staat klaar
-              </button>
+              <div className="flex flex-col gap-1.5">
+                <button onClick={handleWhatsApp}
+                  className={"w-full py-2.5 rounded-lg text-xs font-bold transition " + (waCopied ? "bg-emerald-500 text-white" : "bg-green-600 hover:bg-green-500 text-white")}>
+                  {waCopied ? "✓ Gekopieerd! Plak het in WhatsApp Web" : "💬 Open WhatsApp Web"}
+                </button>
+                {waCopied && <p className="text-xs text-zinc-400 text-center">WhatsApp Web geopend — druk Ctrl+V om het bericht te plakken</p>}
+              </div>
             ) : (
               <div className="flex flex-col gap-1.5">
                 <input value={toEmail} onChange={e => setToEmail(e.target.value)}
                   placeholder="E-mailadres ontvanger (bijv. info@restaurant.nl)"
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 transition"/>
-                <button onClick={handleSendEmail} disabled={sending || !toEmail.trim()}
-                  className={"w-full py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 " + (
-                    sendOk === "ok"  ? "bg-emerald-500 text-white" :
-                    sendOk === "err" ? "bg-red-500 text-white" :
-                    sending          ? "bg-zinc-700 text-zinc-400" :
-                    !toEmail.trim()  ? "bg-zinc-700 text-zinc-500 cursor-not-allowed" :
-                    "bg-blue-600 hover:bg-blue-500 text-white")}>
-                  {sending        ? <><Spinner size="w-3 h-3"/> Versturen...</> :
-                   sendOk==="ok"  ? "✓ E-mail verzonden!" :
-                   sendOk==="err" ? "✗ Mislukt — controleer e-mailadres" :
-                   "✉️ Verstuur e-mail"}
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={handleSendEmail} disabled={sending || !toEmail.trim()}
+                    className={"flex-1 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 " + (
+                      sendOk === "ok"  ? "bg-emerald-500 text-white" :
+                      sendOk === "err" ? "bg-red-500 text-white" :
+                      sending          ? "bg-zinc-700 text-zinc-400" :
+                      !toEmail.trim()  ? "bg-zinc-700 text-zinc-500 cursor-not-allowed" :
+                      "bg-blue-600 hover:bg-blue-500 text-white")}>
+                    {sending        ? <><Spinner size="w-3 h-3"/> Versturen...</> :
+                     sendOk==="ok"  ? "✓ Verzonden!" :
+                     sendOk==="err" ? "✗ Mislukt" :
+                     "✉️ Verstuur via EmailJS"}
+                  </button>
+                  <button onClick={() => {
+                    const subject = encodeURIComponent((lead.message||"").match(/Onderwerp:\s*(.+)/)?.[1]?.trim() || "AI Automatisering voor "+lead.name);
+                    const body = encodeURIComponent(lead.message||"");
+                    window.open("https://mail.google.com/mail/?view=cm&to="+encodeURIComponent(toEmail)+"&su="+subject+"&body="+body, "_blank");
+                  }} disabled={!toEmail.trim()}
+                    className={"px-3 py-2.5 rounded-lg text-xs font-bold transition " + (toEmail.trim() ? "bg-zinc-700 hover:bg-zinc-600 text-white" : "bg-zinc-800 text-zinc-600 cursor-not-allowed")}>
+                    📧 Open Gmail
+                  </button>
+                </div>
               </div>
             )}
             <div className="flex gap-2">
