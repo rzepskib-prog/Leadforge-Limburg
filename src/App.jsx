@@ -190,16 +190,21 @@ function LeadCard({lead, onGenerate, onPatch, onDelete, isGenerating, channel}) 
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent(lead.message || "");
-    const phone = (lead.phone || "").replace(/\D/g, "");
+    // Normalize phone: remove spaces, dashes, dots but keep +
+    let phone = (lead.phone || "").replace(/[\s\-().]/g, "");
+    // If starts with 0, replace with Dutch country code
+    if (phone.startsWith("0")) phone = "31" + phone.slice(1);
+    // Remove + if present
+    phone = phone.replace("+", "");
+
     if (phone) {
-      // Force WhatsApp WEB (not desktop app) with phone + message pre-filled
-      window.open("https://web.whatsapp.com/send?phone=" + phone + "&text=" + text, "_blank");
+      // Use api.whatsapp.com - works in browser without desktop app
+      window.open("https://api.whatsapp.com/send?phone=" + phone + "&text=" + text, "_blank");
     } else {
-      // No phone — open WhatsApp Web and copy to clipboard
-      window.open("https://web.whatsapp.com/", "_blank");
       navigator.clipboard.writeText(lead.message || "");
       setWaCopied(true);
       setTimeout(() => setWaCopied(false), 5000);
+      window.open("https://web.whatsapp.com/", "_blank");
     }
   };
 
