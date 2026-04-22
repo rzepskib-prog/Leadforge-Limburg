@@ -1,22 +1,29 @@
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   if (req.method === "OPTIONS") { res.status(200).end(); return; }
 
   const GOOGLE_KEY = "AIzaSyDitl_in7VSJXt66F-Y3KHeRLAHkSYytH0";
 
-  // If no query param — run a test and return diagnostic info
+  // Test mode — no query param
   if (!req.query.query) {
-    const testUrl = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=restaurant+Venlo+Nederland&key=" + GOOGLE_KEY;
     try {
-      const r = await fetch(testUrl);
+      const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": GOOGLE_KEY,
+          "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.rating,places.id",
+        },
+        body: JSON.stringify({ textQuery: "restaurant Venlo Nederland", maxResultCount: 3 }),
+      });
       const data = await r.json();
       res.status(200).json({
         mode: "test",
-        status: data.status,
-        resultsCount: data.results?.length || 0,
-        firstResult: data.results?.[0]?.name || "none",
-        error_message: data.error_message || null,
+        status: data.error ? "ERROR" : "OK",
+        resultsCount: data.places?.length || 0,
+        firstResult: data.places?.[0]?.displayName?.text || "none",
+        error: data.error || null,
       });
     } catch (e) {
       res.status(500).json({ mode: "test", error: e.message });
@@ -24,18 +31,46 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Normal search
-  const { query, lat, lng, radius = 15000 } = req.query;
-  const url = "https://maps.googleapis.com/maps/api/place/textsearch/json" +
-    "?query=" + encodeURIComponent(query) +
-    (lat && lng ? "&location=" + lat + "," + lng : "") +
-    "&radius=" + radius +
-    "&key=" + GOOGLE_KEY;
+  // Normal search using Places API (New)
+  const { query, lat, lng } = req.query;
+
+  const body = {
+    textQuery: query,
+    maxResultCount: 10,
+  };
+
+  if (lat && lng) {
+    body.locationBias = {
+      circle: {
+        center: { latitude: parseFloat(lat), longitude: parseFloat(lng) },
+        radius: 15000,
+      },
+    };
+  }
 
   try {
-    const r = await fetch(url);
+    const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": GOOGLE_KEY,
+        "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.rating,places.id,places.nationalPhoneNumber,places.websiteUri",
+      },
+      body: JSON.stringify(body),
+    });
     const data = await r.json();
-    res.status(200).json(data);
+
+    // Normalize response to match old format so App.jsx works unchanged
+    const results = (data.places || []).map(p => ({
+      name: p.displayName?.text || "",
+      formatted_address: p.formattedAddress || "",
+      rating: p.rating || null,
+      place_id: p.id || "",
+      phone: p.nationalPhoneNumber || null,
+      website: p.websiteUri || null,
+    }));
+
+    res.status(200).json({ status: "OK", results });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
