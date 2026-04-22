@@ -190,12 +190,17 @@ function LeadCard({lead, onGenerate, onPatch, onDelete, isGenerating, channel}) 
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent(lead.message || "");
-    // Always open WhatsApp Web with message pre-filled
-    window.open("https://web.whatsapp.com/", "_blank");
-    // Copy message to clipboard so user can paste it
-    navigator.clipboard.writeText(lead.message || "");
-    setWaCopied(true);
-    setTimeout(() => setWaCopied(false), 5000);
+    const phone = (lead.phone || "").replace(/\D/g, "");
+    if (phone) {
+      // Has phone number — open directly in their chat with message ready
+      window.open("https://wa.me/" + phone + "?text=" + text, "_blank");
+    } else {
+      // No phone number — open WhatsApp Web and copy message to clipboard
+      window.open("https://web.whatsapp.com/", "_blank");
+      navigator.clipboard.writeText(lead.message || "");
+      setWaCopied(true);
+      setTimeout(() => setWaCopied(false), 5000);
+    }
   };
 
   const handleSendEmail = async () => {
@@ -270,9 +275,14 @@ function LeadCard({lead, onGenerate, onPatch, onDelete, isGenerating, channel}) 
               <div className="flex flex-col gap-1.5">
                 <button onClick={handleWhatsApp}
                   className={"w-full py-2.5 rounded-lg text-xs font-bold transition " + (waCopied ? "bg-emerald-500 text-white" : "bg-green-600 hover:bg-green-500 text-white")}>
-                  {waCopied ? "✓ Gekopieerd! Plak het in WhatsApp Web" : "💬 Open WhatsApp Web"}
+                  {waCopied
+                    ? "✓ Gekopieerd! Plak het in WhatsApp Web"
+                    : lead.phone
+                    ? "💬 Open WhatsApp — direct in hun chat"
+                    : "💬 Open WhatsApp Web"}
                 </button>
-                {waCopied && <p className="text-xs text-zinc-400 text-center">WhatsApp Web geopend — druk Ctrl+V om het bericht te plakken</p>}
+                {lead.phone && <p className="text-xs text-emerald-500 text-center">📞 {lead.phone} — opent direct in hun chat</p>}
+                {waCopied && !lead.phone && <p className="text-xs text-zinc-400 text-center">WhatsApp Web geopend — druk Ctrl+V om het bericht te plakken</p>}
               </div>
             ) : (
               <div className="flex flex-col gap-1.5">
