@@ -192,10 +192,10 @@ function LeadCard({lead, onGenerate, onPatch, onDelete, isGenerating, channel}) 
     const text = encodeURIComponent(lead.message || "");
     const phone = (lead.phone || "").replace(/\D/g, "");
     if (phone) {
-      // Has phone number — open directly in their chat with message ready
-      window.open("https://wa.me/" + phone + "?text=" + text, "_blank");
+      // Force WhatsApp WEB (not desktop app) with phone + message pre-filled
+      window.open("https://web.whatsapp.com/send?phone=" + phone + "&text=" + text, "_blank");
     } else {
-      // No phone number — open WhatsApp Web and copy message to clipboard
+      // No phone — open WhatsApp Web and copy to clipboard
       window.open("https://web.whatsapp.com/", "_blank");
       navigator.clipboard.writeText(lead.message || "");
       setWaCopied(true);
