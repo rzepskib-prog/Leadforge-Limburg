@@ -23,12 +23,12 @@ const LIMBURG_LOCS = [
 ];
 
 const BIZ_TYPES = [
-  { id:"restaurant",  label:"Restaurant / Café",       icon:"🍽️", query:"restaurant",          pain:"reserveringen, menu updates en klantvragen handmatig verwerken" },
-  { id:"retail",      label:"Winkel / Retail",          icon:"🛍️", query:"winkel",               pain:"voorraadbeheer, klantcommunicatie en productbeschrijvingen bijhouden" },
-  { id:"trade",       label:"Installateur / Aannemer", icon:"🔧", query:"installateur",         pain:"offertes opstellen, afspraken plannen en facturatie verwerken" },
-  { id:"hospitality", label:"Hotel / B&B",              icon:"🏨", query:"hotel",                pain:"boekingen bijhouden, gastvragen beantwoorden en reviews verwerken" },
-  { id:"accountant",  label:"Boekhouder / Adviseur",   icon:"📊", query:"administratiekantoor", pain:"rapportages opstellen, klantcommunicatie en administratie" },
-  { id:"other",       label:"Overig MKB",              icon:"🏢", query:"bedrijf",              pain:"repetitieve taken, klantenservice en dagelijkse administratie" },
+  { id:"restaurant",  label:"Restaurant / Café",       icon:"🍽️", query:"familie restaurant eetcafe klein",          pain:"reserveringen, menu updates en klantvragen handmatig verwerken" },
+  { id:"retail",      label:"Winkel / Retail",          icon:"🛍️", query:"zelfstandige winkel mkb familiebedrijf",    pain:"voorraadbeheer, klantcommunicatie en productbeschrijvingen bijhouden" },
+  { id:"trade",       label:"Installateur / Aannemer", icon:"🔧", query:"installatiebedrijf loodgieter elektricien klein mkb", pain:"offertes opstellen, afspraken plannen en facturatie verwerken" },
+  { id:"hospitality", label:"Hotel / B&B",              icon:"🏨", query:"bed breakfast pension klein hotel",         pain:"boekingen bijhouden, gastvragen beantwoorden en reviews verwerken" },
+  { id:"accountant",  label:"Boekhouder / Adviseur",   icon:"📊", query:"administratiekantoor boekhouder zelfstandig mkb", pain:"rapportages opstellen, klantcommunicatie en administratie" },
+  { id:"other",       label:"Overig MKB",              icon:"🏢", query:"zelfstandig mkb familiebedrijf ondernemer",  pain:"repetitieve taken, klantenservice en dagelijkse administratie" },
 ];
 
 const STATUSES = [
@@ -80,6 +80,21 @@ async function sendEmail(toEmail, subject, message) {
   return window.emailjs.send(EJS_SERVICE, EJS_TEMPLATE, { to_email: toEmail, subject, message });
 }
 
+// Known chains and government institutions to skip
+const SKIP_KEYWORDS = [
+  "gemeente","provincie","rijks","overheid","ministerie","school","universiteit",
+  "ziekenhuis","mcdonald","burger king","subway","domino","pizza hut","kfc",
+  "albert heijn","jumbo","lidl","aldi","action","primark","hema","blokker",
+  "gamma","praxis","hornbach","mediamarkt","coolblue","kruidvat","etos",
+  "apotheek","huisarts","tandarts","fysiotherapie","stichting","vereniging",
+  "bibliotheek","museum","theater","gemeente"
+];
+
+function isSmallBusiness(name) {
+  const lower = name.toLowerCase();
+  return !SKIP_KEYWORDS.some(k => lower.includes(k));
+}
+
 async function searchRealBusinesses(typeIds, count = 8) {
   const selected = BIZ_TYPES.filter(t => typeIds.includes(t.id));
   const results = [];
@@ -90,7 +105,7 @@ async function searchRealBusinesses(typeIds, count = 8) {
     try {
       const query = btype.query + " " + loc.name + " Limburg";
       const data  = await placesSearch(query, loc.lat, loc.lng);
-      const places = data.results || [];
+      const places = (data.results || []).filter(p => isSmallBusiness(p.name));
       if (places.length > 0) {
         const pick = places[Math.floor(Math.random() * Math.min(5, places.length))];
         if (seen.has(pick.place_id)) continue;
