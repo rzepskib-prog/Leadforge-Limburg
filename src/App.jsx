@@ -80,35 +80,65 @@ async function sendEmail(toEmail, subject, message) {
   return window.emailjs.send(EJS_SERVICE, EJS_TEMPLATE, { to_email: toEmail, subject, message });
 }
 
-// Known chains and government institutions to skip
+// Big chains, hotel groups, outlets, government — all skip
 const SKIP_KEYWORDS = [
+  // Government & public
   "gemeente","provincie","rijks","overheid","ministerie","school","universiteit",
-  "ziekenhuis","mcdonald","burger king","subway","domino","pizza hut","kfc",
-  "albert heijn","jumbo","lidl","aldi","action","primark","hema","blokker",
-  "gamma","praxis","hornbach","mediamarkt","coolblue","kruidvat","etos",
-  "apotheek","huisarts","tandarts","fysiotherapie","stichting","vereniging",
-  "bibliotheek","museum","theater","gemeente"
+  "ziekenhuis","politie","brandweer","bibliotheek","museum","theater","stichting",
+  "vereniging","sporthal","zwembad","gemeentehuis","postkantoor","belasting",
+  // Hotel chains
+  "fletcher","van der valk","nh hotel","hilton","marriott","ibis","novotel",
+  "holiday inn","golden tulip","mercure","radisson","ramada","best western",
+  "bilderberg","bastion","citizen m","citizenm","park inn","hamptonby",
+  // Retail chains & outlets
+  "outlet","factory","designer","roermond outlet","maasmechelen",
+  "albert heijn","jumbo","lidl","aldi","plus supermarkt","coop","spar",
+  "action","primark","hema","blokker","gamma","praxis","hornbach",
+  "mediamarkt","coolblue","kruidvat","etos","douglas","rituals","sephora",
+  "zara","h&m","mango","uniqlo","only","vero moda","jack jones",
+  "decathlon","intersport","jd sports","foot locker",
+  // Food chains
+  "mcdonald","burger king","subway","domino","pizza hut","kfc","taco bell",
+  "new york pizza","telepizza","dunkin","starbucks","costa coffee",
+  "la place","autogrill","pathé","cinema","lunchroom","snackbar chain",
+  // Care & health institutions
+  "apotheek","huisarts","tandarts","fysiotherapie","zorggroep","zorgcentrum",
+  "verpleeghuis","woonzorg","thuiszorg","vivantes","proteion",
+  // Other big names
+  "ikea","hornbach","bouwmarkt","intratuin","makro","metro","sligro",
+  "shell","bp","esso","total","texaco","Q8","tango","tinq",
+  "ns station","centraal station","luchthaven","airport",
+  "rabo","ing bank","abn amro","sns bank","triodos","knab",
 ];
 
-function isSmallBusiness(name) {
+// Big chains typically have 200+ reviews — real small MKB rarely does
+function isSmallBusiness(name, userRatingCount) {
   const lower = name.toLowerCase();
-  return !SKIP_KEYWORDS.some(k => lower.includes(k));
+  const isBigChain = SKIP_KEYWORDS.some(k => lower.includes(k));
+  const tooManyReviews = userRatingCount && userRatingCount > 300;
+  return !isBigChain && !tooManyReviews;
 }
 
 async function searchRealBusinesses(typeIds, count = 8) {
   const selected = BIZ_TYPES.filter(t => typeIds.includes(t.id));
   const results = [];
   const seen = new Set();
-  for (let i = 0; i < count; i++) {
+  // Try multiple locations to get enough small businesses
+  let attempts = 0;
+  while (results.length < count && attempts < count * 3) {
+    attempts++;
+    const i = attempts - 1;
     const btype = selected[i % selected.length];
     const loc   = LIMBURG_LOCS[i % LIMBURG_LOCS.length];
     try {
       const query = btype.query + " " + loc.name + " Limburg";
       const data  = await placesSearch(query, loc.lat, loc.lng);
-      const places = (data.results || []).filter(p => isSmallBusiness(p.name));
+      const places = (data.results || []).filter(p => isSmallBusiness(p.name, p.user_ratings_total));
       if (places.length > 0) {
-        const pick = places[Math.floor(Math.random() * Math.min(5, places.length))];
-        if (seen.has(pick.place_id)) continue;
+        // Pick from bottom half — less popular = more likely small local business
+        const startIdx = Math.floor(places.length / 2);
+        const pick = places[startIdx + Math.floor(Math.random() * Math.max(1, places.length - startIdx))];
+        if (!pick || seen.has(pick.place_id)) continue;
         seen.add(pick.place_id);
         results.push({
           id:        crypto.randomUUID(),
@@ -132,7 +162,7 @@ async function searchRealBusinesses(typeIds, count = 8) {
     } catch(_) {}
   }
   if (results.length < 2) return generateAILeads(typeIds, count);
-  return results;
+  return results.slice(0, count);
 }
 
 async function generateAILeads(typeIds, count = 8) {
