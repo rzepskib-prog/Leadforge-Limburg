@@ -419,16 +419,14 @@ export default function App() {
     const isEmail = channel === "email";
     const style   = isEmail ? "zakelijke e-mail" : "kort WhatsApp bericht";
     const instr   = isEmail
-      ? "Begin met 'Onderwerp: [pakkende titel]'. Dan 3-4 korte alineas: 1) hun specifieke situatie, 2) wat AI voor hen doet, 3) concreet voordeel in tijd of geld, 4) uitnodiging gratis 20-min gesprek. Sluit af met contactgegevens op aparte regels."
-      : "3-5 zinnen. Casual maar professioneel. Verwijs naar hun branche. Sluit af met telefoonnummer en website op een aparte regel.";
+      ? "Onderwerp: kort en zakelijk. Dan max 3 alineas: 1) één zin over hun specifieke pijnpunt, 2) één concrete oplossing die tijd of geld bespaart, 3) uitnodiging voor een gratis gesprek bij hen op locatie. Geen verkooppraatjes. Zakelijk en to the point."
+      : "Max 4 zinnen. Zakelijk, direct, geen fluff. Één concreet voordeel. Eindig met voorstel voor een afspraak bij hen langs.";
     const prompt =
-      "Je bent een AI automatisering specialist uit Nieuw Bergen, Limburg. Bedrijf: " + bizName + "." +
+      "Je bent een nuchtere, professionele AI automatisering specialist uit Nieuw Bergen, Limburg. Bedrijf: " + bizName + "." +
       " Contactgegevens: " + CONTACT.phone + " | " + CONTACT.email + " | " + CONTACT.website + "." +
-      " Schrijf een " + style + " in correct Nederlands voor: " + lead.name + " (" + lead.type + ") in " + lead.city + "." +
-      " Hun pijnpunt: " + lead.pain + ". Website aanwezig: " + (lead.hasWebsite ? "ja" : "nee") + "." +
-      " BELANGRIJK: Vermeld altijd dat je lokaal gevestigd bent in Limburg en persoonlijk langs kunt komen voor een gratis kennismakingsgesprek. Dit wekt direct vertrouwen. Benoem dat je als lokale ondernemer hun situatie begrijpt en niet zomaar een online bedrijf van ver weg bent." +
-      " " + instr +
-      " Schrijf direct en persoonlijk. Geen placeholders. Sluit ALTIJD af met de echte contactgegevens.";
+      " Schrijf een " + style + " in professioneel Nederlands voor: " + lead.name + " (" + lead.type + ") in " + lead.city + "." +
+      " Hun pijnpunt: " + lead.pain + "." +
+      " REGELS: Kort en zakelijk. Max 100 woorden voor WhatsApp, max 150 voor email. Geen overdreven enthousiasme. Geen 'geweldige kansen'. Vermeld kort dat je lokaal zit in Limburg en persoonlijk langs kunt komen. Één concreet voordeel noemen (bijv. 5 uur per week besparen op offertes). Eindig met een simpele vraag om een afspraak in te plannen. Geen placeholders. Sluit af met contactgegevens op aparte regels.";
     try {
       const txt = await callClaude(prompt);
       patchLead(lead.id, { message: txt });
