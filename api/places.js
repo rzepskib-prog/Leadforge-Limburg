@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": GOOGLE_KEY,
-        "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.rating,places.id,places.nationalPhoneNumber,places.websiteUri",
+        "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.rating,places.id,places.nationalPhoneNumber,places.websiteUri,places.userRatingCount",
       },
       body: JSON.stringify(body),
     });
@@ -42,6 +42,7 @@ export default async function handler(req, res) {
       place_id: p.id || "",
       phone: p.nationalPhoneNumber || null,
       website: p.websiteUri || null,
+      user_ratings_total: p.userRatingCount || 0,
     }));
 
     res.status(200).json({ status: "OK", results });
