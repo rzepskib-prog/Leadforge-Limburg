@@ -418,24 +418,35 @@ export default function App() {
     setGenMsg(lead.id);
     const isEmail = channel === "email";
     const style   = isEmail ? "zakelijke e-mail" : "kort WhatsApp bericht";
-    const instr   = isEmail
-      ? "Schrijf een professionele cold email met: Onderwerp: [zakelijk en specifiek]. Alinea 1: directe opening met een concrete observatie over hun bedrijf of sector, geen complimenten. Alinea 2: één specifiek probleem dat wij oplossen met een meetbaar resultaat (tijd of geld). Alinea 3: korte call to action — voorstel voor een gesprek van 20 minuten bij hen op locatie, geen druk. Toon: zakelijk, zelfverzekerd, respectvol. Schrijf alsof je een senior consultant bent, niet een verkoper."
-      : "Schrijf een professioneel WhatsApp bericht. Max 3 zinnen. Toon: direct en zakelijk, geen emoji, geen uitroeptekens. Zin 1: wie je bent en waarvandaan. Zin 2: één concreet probleem dat je oplost. Zin 3: vraag om een kort gesprek bij hen langs.";
+    const emailTemplate =
+      "Volg dit exacte format voor de email, geen afwijkingen:\n\n" +
+      "Onderwerp: [max 8 woorden, specifiek voor hun sector]\n\n" +
+      "Geachte ondernemer,\n\n" +
+      "[1 zin: benoem een specifiek tijdverlies of kostenpost die typisch is voor " + lead.type + ". Concreet getal gebruiken.]\n\n" +
+      "Wij lossen dit op. [1 zin: exacte oplossing + meetbaar resultaat in tijd of geld.]\n\n" +
+      "Ik ben lokaal gevestigd in Nieuw Bergen en kom graag vrijblijvend langs. Heeft u 20 minuten deze of volgende week?\n\n" +
+      "Met vriendelijke groet,\n" +
+      "[Jouw naam]\n" +
+      bizName + "\n" +
+      CONTACT.phone + "\n" +
+      CONTACT.email + "\n" +
+      CONTACT.website;
+
+    const waTemplate =
+      "Volg dit exacte format voor WhatsApp, geen afwijkingen:\n\n" +
+      "Goedemiddag,\n\n" +
+      "Mijn naam is [naam] van " + bizName + " uit Nieuw Bergen.\n\n" +
+      "[1 zin: concreet probleem voor " + lead.type + " met getal.]\n\n" +
+      "[1 zin: wat wij oplossen + resultaat.]\n\n" +
+      "Ik kom graag even langs. Schikt u dit of volgende week?\n\n" +
+      CONTACT.phone;
+
     const prompt =
-      "Je bent een senior AI automatisering consultant van " + bizName + ", gevestigd in Nieuw Bergen, Limburg." +
-      " Je schrijft professionele B2B outreach voor lokale MKB bedrijven in Limburg." +
-      " Doelbedrijf: " + lead.name + " (" + lead.type + ") in " + lead.city + "." +
-      " Hun pijnpunt: " + lead.pain + "." +
-      " Jouw contactgegevens: " + CONTACT.phone + " | " + CONTACT.email + " | " + CONTACT.website + "." +
-      " STRIKTE REGELS:" +
-      " 1. Schrijf in formeel maar toegankelijk Nederlands — tutoyeer niet, gebruik u." +
-      " 2. Nooit: overdreven enthousiasme, buzzwords zoals 'innovatief' of 'revolutionair', of vage beloftes." +
-      " 3. Altijd: één concreet meetbaar voordeel noemen (bijv. '3 tot 5 uur per week besparen')." +
-      " 4. Vermeld dat je lokaal gevestigd bent in Limburg en persoonlijk langs kunt komen." +
-      " 5. Eindig met een concrete, laagdrempelige vraag voor een afspraak." +
-      " 6. Sluit af met je contactgegevens op aparte regels." +
-      " 7. Geen placeholders. Geen [naam]. Gebruik de bedrijfsnaam direct." +
-      " " + instr;
+      "Je bent een Nederlandse B2B sales expert. Schrijf een " + (isEmail ? "email" : "WhatsApp bericht") +
+      " voor " + lead.name + " (" + lead.type + ") in " + lead.city + "." +
+      " Pijnpunt: " + lead.pain + "." +
+      " REGELS: Gebruik u. Geen buzzwords. Geen lange alineas. Concreet getal verplicht. Geen placeholders — vul alles echt in." +
+      " " + (isEmail ? emailTemplate : waTemplate);
     try {
       const txt = await callClaude(prompt);
       patchLead(lead.id, { message: txt });
